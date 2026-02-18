@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { CHARACTERS, Character } from '../data/characters'
+import { CHARACTERS, Character, Rarity } from '../data/characters'
 
 export interface GameState {
   gems: number
@@ -178,12 +178,20 @@ export const useGameState = () => {
     })
   }, [])
 
+     const resetAccount = useCallback(() => {
+    if (window.confirm("ARE YOU SURE? This will PERMANENTLY delete all your progress, heroes, and resources!")) {
+      localStorage.removeItem('idler_rpg_state')
+      window.location.reload()
+    }
+  }, [])
+
   return {
     ...state,
     summon,
     addToParty,
     removeFromParty,
     advanceStage,
-    levelUp
+    levelUp,
+    resetAccount
   }
 }

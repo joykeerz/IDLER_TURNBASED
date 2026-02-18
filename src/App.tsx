@@ -37,6 +37,12 @@ function App() {
                 <p>Acquire new legendary heroes</p>
               </button>
             </div>
+            
+            <div className="home-footer" style={{ marginTop: 'auto', padding: '2rem', textAlign: 'center' }}>
+              <button className="danger-btn-retro" onClick={() => gameState.resetAccount()}>
+                RESET DATA
+              </button>
+            </div>
           </div>
         )}
         {activeTab === 'gacha' && <GachaScreen gameState={gameState} />}

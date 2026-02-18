@@ -780,3 +780,28 @@
   margin: 0.5rem;
   border-radius: 12px;
 }
+
+.danger-btn-retro {
+  background: #a00;
+  color: #fff;
+  border: 4px double #fff;
+  padding: 8px 20px;
+  font-family: inherit;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 0 #600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.danger-btn-retro:hover {
+  background: #c00;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #600;
+}
+
+.danger-btn-retro:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #600;
+}
