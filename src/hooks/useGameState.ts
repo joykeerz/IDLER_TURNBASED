@@ -7,6 +7,7 @@ export interface GameState {
   inventory: Character[]
   party: (Character | null)[]
   currentStage: number
+  clearedStages: number[]
   showcaseCharacterId: string | null
 }
 
@@ -82,7 +83,9 @@ export const useGameState = () => {
       gold: 10000,
       inventory: [CHARACTERS[0], CHARACTERS[1]],
       party: [CHARACTERS[0], CHARACTERS[1], null, null],
-      currentStage: 1
+      currentStage: 1,
+      clearedStages: [],
+      showcaseCharacterId: null
     }
   })
 
@@ -192,6 +195,18 @@ export const useGameState = () => {
     }))
   }, [])
 
+  const clearStage = useCallback((stageId: number, goldReward: number, gemReward: number) => {
+    setState(prev => ({
+      ...prev,
+      clearedStages: prev.clearedStages.includes(stageId)
+        ? prev.clearedStages
+        : [...prev.clearedStages, stageId],
+      currentStage: Math.max(prev.currentStage, stageId + 1),
+      gold: prev.gold + goldReward,
+      gems: prev.gems + gemReward,
+    }))
+  }, [])
+
   const levelUp = useCallback((charId: string) => {
     setState(prev => {
       const cost = 500
@@ -245,6 +260,7 @@ export const useGameState = () => {
     addToParty,
     removeFromParty,
     advanceStage,
+    clearStage,
     levelUp,
     resetAccount,
     setShowcaseCharacter

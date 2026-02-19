@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Character } from '../data/characters'
+import { STAGES, StageEnemy } from '../data/stages'
 
 interface BattleEntity extends Character {
   currentHp: number
@@ -16,7 +17,7 @@ interface DamagePopup {
   type: 'damage' | 'heal'
 }
 
-const BattleScreen = ({ gameState, onHome }: { gameState: any, onHome: () => void }) => {
+const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState: any, stageId?: number, onHome: () => void, onVictory?: () => void }) => {
   const [playerParty, setPlayerParty] = useState<BattleEntity[]>([])
   const [enemies, setEnemies] = useState<BattleEntity[]>([])
   const [isBattleOver, setIsBattleOver] = useState(false)
@@ -40,57 +41,34 @@ const BattleScreen = ({ gameState, onHome }: { gameState: any, onHome: () => voi
     setActiveUnitIndex(0)
     setBattleLog(['Battle started!'])
 
-    const stageMultiplier = 1 + (gameState.currentStage - 1) * 0.15
-    const e: BattleEntity[] = [
-      { 
-        id: 'e1', 
-        name: 'Shadow Slime', 
-        rarity: 'Common', 
-        baseStars: 1,
-        stars: 1,
-        hp: Math.floor(500 * stageMultiplier), 
-        currentHp: Math.floor(500 * stageMultiplier), 
-        atk: Math.floor(40 * stageMultiplier), 
-        def: 20, 
-        spd: 40, 
-        mana: 0,
-        maxMana: 100,
-        skill: { name: 'Slime Splash', description: 'Attack', manaCost: 20, type: 'Attack', power: 1.2 },
-        ultimate: { name: 'Mega Sludge', description: 'AOE Attack', manaCost: 80, type: 'AOE', power: 2.0 },
-        side: 'enemy',
-        awakening: 0,
-        currentMana: 0,
-        level: 1,
-        exp: 0,
-        element: 'Dark',
-        splashArt: '/assets/enemies/slime.png',
-        tags: ['Enemy', 'Slime']
-      },
-      { 
-        id: 'e2', 
-        name: 'Dark Knight', 
-        rarity: 'Rare', 
-        baseStars: 3,
-        stars: 3,
-        hp: Math.floor(1200 * stageMultiplier), 
-        currentHp: Math.floor(1200 * stageMultiplier), 
-        atk: Math.floor(80 * stageMultiplier), 
-        def: 60, 
-        spd: 30, 
-        mana: 0,
-        maxMana: 100,
-        skill: { name: 'Dark Slash', description: 'Attack', manaCost: 40, type: 'Attack', power: 1.8 },
-        ultimate: { name: 'Void Strike', description: 'Massive Single Hit', manaCost: 90, type: 'Attack', power: 4.0 },
-        side: 'enemy',
-        awakening: 0,
-        currentMana: 0,
-        level: 1,
-        exp: 0,
-        element: 'Dark',
-        splashArt: '/assets/enemies/knight.png',
-        tags: ['Enemy', 'Knight']
-      }
-    ]
+    // Load enemies from stage data
+    const stage = STAGES.find(s => s.id === stageId)
+    const stageMultiplier = 1 + (stageId - 1) * 0.15
+    
+    const e: BattleEntity[] = (stage?.enemies ?? []).map((enemy: StageEnemy) => ({
+      id: enemy.id,
+      name: enemy.name,
+      rarity: 'Common' as const,
+      baseStars: 1,
+      stars: 1,
+      hp: Math.floor(enemy.hp * stageMultiplier),
+      currentHp: Math.floor(enemy.hp * stageMultiplier),
+      atk: Math.floor(enemy.atk * stageMultiplier),
+      def: enemy.def,
+      spd: enemy.spd,
+      mana: 0,
+      maxMana: enemy.maxMana,
+      skill: enemy.skill,
+      ultimate: enemy.ultimate,
+      side: 'enemy' as const,
+      awakening: 0,
+      currentMana: 0,
+      level: 1,
+      exp: 0,
+      element: 'Dark' as const,
+      splashArt: enemy.splashArt,
+      tags: ['Enemy']
+    }))
     setEnemies(e)
   }
 
@@ -358,6 +336,11 @@ const BattleScreen = ({ gameState, onHome }: { gameState: any, onHome: () => voi
     if (enemies.length > 0 && enemies.every(e => e.currentHp <= 0)) {
         addLog("Victory! All enemies defeated.")
         setIsBattleOver(true)
+        // Reward the player and mark stage as cleared
+        const stage = STAGES.find(s => s.id === stageId)
+        if (stage && gameState.clearStage) {
+          gameState.clearStage(stageId, stage.rewards.gold, stage.rewards.gems)
+        }
     }
     if (playerParty.length > 0 && playerParty.every(p => p.currentHp <= 0)) {
         addLog("Defeat... Your party has fallen.")
@@ -371,6 +354,8 @@ const BattleScreen = ({ gameState, onHome }: { gameState: any, onHome: () => voi
     { id: 'skill', name: attacker.skill.name.toUpperCase(), type: attacker.skill.type, power: attacker.skill.power, cost: attacker.skill.manaCost, art: attacker.splashArt },
     { id: 'ult', name: attacker.ultimate.name.toUpperCase(), type: attacker.ultimate.type, power: attacker.ultimate.power, cost: attacker.ultimate.manaCost, art: attacker.splashArt }
   ] : []
+
+  const stage = STAGES.find(s => s.id === stageId)
 
   if (playerParty.length === 0) {
     return (
@@ -395,7 +380,7 @@ const BattleScreen = ({ gameState, onHome }: { gameState: any, onHome: () => voi
             AUTO: {isAuto ? 'ON' : 'OFF'}
           </button>
         </div>
-        <h3>STAGE {gameState.currentStage}</h3>
+        <h3>{stage ? `${stage.chapterName} — ${stage.name}` : `STAGE ${stageId}`}</h3>
         <div className="header-right">
           <button className="header-btn quit-btn" onClick={onHome}>QUIT</button>
         </div>
@@ -513,11 +498,11 @@ const BattleScreen = ({ gameState, onHome }: { gameState: any, onHome: () => voi
             <h3>{enemies.every(e => e.currentHp <= 0) ? 'VICTORY' : 'DEFEAT'}</h3>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
               {enemies.every(e => e.currentHp <= 0) ? (
-                <button className="retry-btn" onClick={() => gameState.advanceStage()}>NEXT STAGE</button>
+                <button className="retry-btn" onClick={() => onVictory ? onVictory() : onHome()}>STAGE MAP</button>
               ) : (
                 <button className="retry-btn" onClick={() => resetBattle()}>RETRY</button>
               )}
-              <button className="retry-btn" onClick={onHome}>RETURN</button>
+              <button className="retry-btn" onClick={onHome}>HOME</button>
             </div>
           </div>
         </div>
