@@ -25,7 +25,6 @@ const BattleScreen = ({ gameState, onHome }: { gameState: any, onHome: () => voi
   const [battleLog, setBattleLog] = useState<string[]>(['Battle started!'])
   const [popups, setPopups] = useState<DamagePopup[]>([])
   const [arenaShake, setArenaShake] = useState(false)
-  const [hoverInfo, setHoverInfo] = useState<string | null>(null)
 
   const addLog = (msg: string) => setBattleLog(prev => [msg, ...prev].slice(0, 5))
 
@@ -62,7 +61,10 @@ const BattleScreen = ({ gameState, onHome }: { gameState: any, onHome: () => voi
         awakening: 0,
         currentMana: 0,
         level: 1,
-        exp: 0
+        exp: 0,
+        element: 'Dark',
+        splashArt: '/assets/enemies/slime.png',
+        tags: ['Enemy', 'Slime']
       },
       { 
         id: 'e2', 
@@ -83,7 +85,10 @@ const BattleScreen = ({ gameState, onHome }: { gameState: any, onHome: () => voi
         awakening: 0,
         currentMana: 0,
         level: 1,
-        exp: 0
+        exp: 0,
+        element: 'Dark',
+        splashArt: '/assets/enemies/knight.png',
+        tags: ['Enemy', 'Knight']
       }
     ]
     setEnemies(e)
@@ -360,6 +365,13 @@ const BattleScreen = ({ gameState, onHome }: { gameState: any, onHome: () => voi
     }
   }, [enemies, playerParty])
 
+  const attacker = playerParty[activeUnitIndex]
+  const hand = attacker ? [
+    { id: 'atk', name: 'BASIC ATTACK', type: 'Attack', power: 1.0, cost: 0, art: attacker.splashArt },
+    { id: 'skill', name: attacker.skill.name.toUpperCase(), type: attacker.skill.type, power: attacker.skill.power, cost: attacker.skill.manaCost, art: attacker.splashArt },
+    { id: 'ult', name: attacker.ultimate.name.toUpperCase(), type: attacker.ultimate.type, power: attacker.ultimate.power, cost: attacker.ultimate.manaCost, art: attacker.splashArt }
+  ] : []
+
   if (playerParty.length === 0) {
     return (
       <div className="screen-battle empty-state">
@@ -375,146 +387,145 @@ const BattleScreen = ({ gameState, onHome }: { gameState: any, onHome: () => voi
   return (
     <div className="screen-battle">
       <div className="battle-header">
-        <button 
-          className={`auto-toggle-btn ${isAuto ? 'active' : ''}`} 
-          onClick={() => setIsAuto(!isAuto)}
-        >
-          AUTO: {isAuto ? 'ON' : 'OFF'}
-        </button>
-        <h3>Stage {gameState.currentStage}</h3>
+        <div className="header-left">
+          <button 
+            className={`header-btn ${isAuto ? 'active' : ''}`} 
+            onClick={() => setIsAuto(!isAuto)}
+          >
+            AUTO: {isAuto ? 'ON' : 'OFF'}
+          </button>
+        </div>
+        <h3>STAGE {gameState.currentStage}</h3>
+        <div className="header-right">
+          <button className="header-btn quit-btn" onClick={onHome}>QUIT</button>
+        </div>
       </div>
 
-      <div className={`battle-arena ${arenaShake ? 'shake-heavy' : ''}`}>
+      <div className={`battle-arena-cinematic ${arenaShake ? 'shake-heavy' : ''}`}>
         {popups.map(p => (
           <div 
             key={p.id} 
-            className={`damage-popup ${p.type}`} 
+            className="battle-damage-number" 
             style={{ left: `${p.x}%`, top: `${p.y}%` }}
           >
             {p.value}
           </div>
         ))}
 
-        <div className="enemies-side">
+        {/* Enemies Side */}
+        <div className="enemy-side-visual">
           {enemies.map(e => (
-            <div key={e.id} 
-                 className={`unit enemy ${e.currentHp <= 0 ? 'dead' : ''} ${e.lastAction === 'damage' ? 'taking-damage' : ''} ${e.lastAction === 'attack' || e.lastAction === 'skill' ? 'lunge-enemy' : ''}`} 
-                 onClick={() => e.currentHp > 0 && handleAttack(e)}>
-              <div className="unit-sprite">👹</div>
-              <div className="unit-name">{e.name}</div>
+            <div 
+              key={e.id} 
+              className={`battle-portrait-unit enemy ${e.currentHp <= 0 ? 'dead' : ''} ${e.lastAction === 'damage' ? 'taking-damage' : ''} ${e.lastAction === 'attack' || e.lastAction === 'skill' ? 'lunge-enemy' : ''}`}
+            >
+              <div 
+                className="portrait-art-wrap" 
+                style={{ backgroundImage: e.splashArt ? `url(${e.splashArt})` : 'none' }}
+              >
+                {!e.splashArt && (
+                  <div className="enemy-silhouette">
+                    <span className="enemy-icon-large">👹</span>
+                  </div>
+                )}
+              </div>
+              <div className="portrait-platform"></div>
+              <div className="unit-bars-overlay">
+                <div className="battle-hp-bar-mini">
+                  <div className="battle-hp-fill" style={{ width: `${(e.currentHp / e.hp) * 100}%` }}></div>
+                </div>
+                <div className="unit-name-tag">{e.name.toUpperCase()}</div>
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="players-side">
+        {/* Players Side */}
+        <div className="player-side-visual">
           {playerParty.map((p, i) => (
-            <div key={p.id} className={`unit player ${i === activeUnitIndex ? 'active' : ''} ${p.currentHp <= 0 ? 'dead' : ''} ${p.lastAction === 'damage' ? 'taking-damage' : ''} ${p.lastAction === 'attack' || p.lastAction === 'skill' ? 'lunge-player' : ''}`}>
-              <div className="unit-sprite">⚔️</div>
+            <div 
+              key={p.id} 
+              className={`battle-portrait-unit player ${i === activeUnitIndex ? 'active' : ''} ${p.currentHp <= 0 ? 'dead' : ''} ${p.lastAction === 'damage' ? 'taking-damage' : ''} ${p.lastAction === 'attack' || p.lastAction === 'skill' ? 'lunge-player' : ''}`}
+            >
+              <div className="portrait-art-wrap" style={{ backgroundImage: `url(${p.splashArt})` }}></div>
+              <div className="portrait-platform"></div>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="battle-ui">
-        <div className="battle-log-mini">
-          {battleLog[battleLog.length - 1] || "Battle started..."}
-        </div>
-        
-        <div className="enemy-info-panel">
-          {enemies.map(e => (
-            <div 
-              key={e.id} 
-              className={`enemy-info-row ${e.currentHp <= 0 ? 'dead' : ''}`}
-              onClick={() => e.currentHp > 0 && handleAttack(e)}
-            >
-              <span className="enemy-info-name">{e.name}</span>
-              <div className="retro-hp-bar-container" style={{ width: '60px', height: '6px', marginLeft: '10px' }}>
-                <div className="retro-hp-bar" style={{ width: `${(e.currentHp / e.hp) * 100}%` }}></div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="status-panel">
-          {playerParty.map((p, i) => (
-            <div key={p.id} className={`status-row ${i === activeUnitIndex && !isBattleOver ? 'active' : ''}`}>
-              <div className="status-name">{p.name}</div>
-              <div className="status-bars-container">
-                <div className="status-bar-group">
-                  <span className="status-label">HP</span>
-                  <div className="retro-hp-bar-container">
-                    <div className="retro-hp-bar" style={{ width: `${(p.currentHp / p.hp) * 100}%` }}></div>
+      {/* Battle Hand / UI */}
+      {!isBattleOver ? (
+        <div className="battle-hand-container">
+          {attacker && (
+            <div className="active-unit-info-panel">
+              <div className="active-name">{attacker.name}</div>
+              <div className="stat-bars">
+                <div className="stat-line">
+                  <div className="label-group">
+                    <span className="stat-label">HP</span>
+                    <span className="stat-value">{attacker.currentHp} / {attacker.hp}</span>
                   </div>
-                  <div className="status-values">{Math.ceil(p.currentHp)}/{p.hp}</div>
+                  <div className="stat-bar-outer hp">
+                    <div className="stat-bar-fill" style={{ width: `${(attacker.currentHp / attacker.hp) * 100}%` }}></div>
+                  </div>
                 </div>
-                <div className="status-bar-group">
-                  <span className="status-label">MP</span>
-                  <div className="retro-mp-bar-container">
-                    <div className="retro-mp-bar" style={{ width: `${(p.currentMana / (p.maxMana || 100)) * 100}%` }}></div>
+                <div className="stat-line">
+                  <div className="label-group">
+                    <span className="stat-label">MP</span>
+                    <span className="stat-value">{attacker.currentMana} / {attacker.maxMana || 100}</span>
                   </div>
-                  <div className="status-values">{Math.ceil(p.currentMana)}/{p.maxMana || 100}</div>
+                  <div className="stat-bar-outer mp">
+                    <div className="stat-bar-fill" style={{ width: `${(attacker.currentMana / (attacker.maxMana || 100)) * 100}%` }}></div>
+                  </div>
                 </div>
               </div>
             </div>
-          ))}
-          
-          {isBattleOver && (
-             <div className="battle-results" style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
-                <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
-                    {enemies.every(e => e.currentHp <= 0) ? 'VICTORY!' : 'DEFEAT'}
-                </span>
-                {enemies.every(e => e.currentHp <= 0) ? (
-                  <button className="retro-btn" style={{width: 'auto'}} onClick={() => gameState.advanceStage()}>Next</button>
-                ) : (
-                  <button className="retro-btn" style={{width: 'auto'}} onClick={() => resetBattle()}>Retry</button>
-                )}
-             </div>
           )}
-        </div>
-
-        <div className="command-panel">
-          {!isBattleOver && playerParty[activeUnitIndex] ? (
-            <>
-              <button 
-                className="retro-btn"
-                onMouseEnter={() => setHoverInfo("Basic attack.")}
-                onMouseLeave={() => setHoverInfo(null)}
+          <div className="cards-hand-row">
+            {hand.map(card => (
+              <div 
+                key={card.id} 
+                className={`skill-card-battle ${attacker && attacker.currentMana < card.cost ? 'disabled' : ''}`}
                 onClick={() => {
-                  const target = enemies.find(e => e.currentHp > 0)
-                  if (target) handleAttack(target)
+                  if (card.id === 'atk') {
+                    const target = enemies.find(e => e.currentHp > 0)
+                    if (target) handleAttack(target)
+                  } else if (card.id === 'skill') {
+                    handleSkill()
+                  } else if (card.id === 'ult') {
+                    handleUltimate()
+                  }
                 }}
-              >Attack</button>
-              <button 
-                className="retro-btn"
-                onMouseEnter={() => setHoverInfo(playerParty[activeUnitIndex].skill?.description || null)}
-                onMouseLeave={() => setHoverInfo(null)}
-                disabled={!playerParty[activeUnitIndex].skill || playerParty[activeUnitIndex].currentMana < (playerParty[activeUnitIndex].skill?.manaCost || 0)}
-                onClick={() => handleSkill()}
               >
-                {playerParty[activeUnitIndex].skill?.name || 'Skill'}
-              </button>
-              <button 
-                className="retro-btn"
-                onMouseEnter={() => setHoverInfo(playerParty[activeUnitIndex].ultimate?.description || null)}
-                onMouseLeave={() => setHoverInfo(null)}
-                disabled={!playerParty[activeUnitIndex].ultimate || playerParty[activeUnitIndex].currentMana < (playerParty[activeUnitIndex].ultimate?.manaCost || 0)}
-                onClick={() => handleUltimate()}
-              >
-                Ultimate
-              </button>
-            </>
-          ) : isBattleOver ? (
-            <div className="battle-results">
-              <button className="retro-btn" onClick={() => onHome()}>Quit</button>
+                <div className="skill-card-art" style={{ backgroundImage: `url(${card.art})` }}></div>
+                <div className="skill-card-info">
+                  <div className="skill-card-name">{card.name}</div>
+                  <div className="skill-card-cost">{card.cost > 0 ? `MP ${card.cost}` : 'FREE'}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="battle-hand-container results-overlay">
+          <div className="battle-results">
+            <h3>{enemies.every(e => e.currentHp <= 0) ? 'VICTORY' : 'DEFEAT'}</h3>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              {enemies.every(e => e.currentHp <= 0) ? (
+                <button className="retry-btn" onClick={() => gameState.advanceStage()}>NEXT STAGE</button>
+              ) : (
+                <button className="retry-btn" onClick={() => resetBattle()}>RETRY</button>
+              )}
+              <button className="retry-btn" onClick={onHome}>RETURN</button>
             </div>
-          ) : (
-            <div style={{color: '#888', fontStyle: 'italic', fontSize: '0.8rem'}}>Waiting...</div>
-          )}
+          </div>
         </div>
+      )}
 
-        <div className={`command-info-box ${hoverInfo ? 'visible' : ''}`} style={{ position: 'absolute', top: '-60px', left: '10px', right: '10px' }}>
-          {hoverInfo}
-        </div>
+      {/* Mini Log Overlay */}
+      <div className="battle-log-mini-overlay">
+        {battleLog[0]}
       </div>
     </div>
   )

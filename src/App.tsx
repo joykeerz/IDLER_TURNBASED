@@ -4,7 +4,6 @@ import GachaScreen from './components/GachaScreen'
 import PartyScreen from './components/PartyScreen'
 import BattleScreen from './components/BattleScreen'
 import CharacterDetailScreen from './components/CharacterDetailScreen'
-import { CHARACTERS } from './data/characters'
 import './App.css'
 import './index.css'
 
@@ -143,7 +142,7 @@ function App() {
         {activeTab === 'battle' && <BattleScreen gameState={gameState} onHome={() => setActiveTab('home')} />}
       </main>
 
-      {activeTab !== 'character_detail' && (
+      {!(activeTab === 'character_detail' || activeTab === 'battle') && (
         <nav className="game-nav">
           <button className={activeTab === 'home' ? 'active' : ''} onClick={() => setActiveTab('home')}>BASE</button>
           <button className={activeTab === 'party' ? 'active' : ''} onClick={() => setActiveTab('party')}>PARTY</button>
