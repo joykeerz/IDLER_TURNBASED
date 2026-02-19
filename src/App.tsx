@@ -3,59 +3,154 @@ import { useGameState } from './hooks/useGameState'
 import GachaScreen from './components/GachaScreen'
 import PartyScreen from './components/PartyScreen'
 import BattleScreen from './components/BattleScreen'
+import CharacterDetailScreen from './components/CharacterDetailScreen'
+import { CHARACTERS } from './data/characters'
 import './App.css'
 import './index.css'
 
 function App() {
-  const [activeTab, setActiveTab] = useState('home')
+  const [activeTab, setActiveTab] = useState<'home' | 'gacha' | 'party' | 'battle' | 'character_detail'>('home')
+  const [detailCharId, setDetailCharId] = useState<string | null>(null)
   const gameState = useGameState()
 
   return (
     <div className="app-container">
-      <header className="game-header">
-        <h1>GACHA RPG</h1>
-        <div className="player-stats">
-          <div className="stat-pill">Gems: {gameState.gems}</div>
-          <div className="stat-pill">Gold: {gameState.gold}</div>
-        </div>
-      </header>
-
       <main className="game-content">
         {activeTab === 'home' && (
           <div className="screen-home">
-            <div className="hero-banner">
-              <h2>Welcome, Adventurer</h2>
-              <p>Forge your destiny and summon powerful allies.</p>
-            </div>
-            <div className="quick-actions">
-              <button className="action-card" onClick={() => setActiveTab('battle')}>
-                <h3>Battle</h3>
-                <p>Fight monsters and earn rewards</p>
-              </button>
-              <button className="action-card" onClick={() => setActiveTab('gacha')}>
-                <h3>Summon</h3>
-                <p>Acquire new legendary heroes</p>
-              </button>
+            <div className="particles-container">
+              <div className="particle"></div><div className="particle"></div><div className="particle"></div>
             </div>
             
-            <div className="home-footer" style={{ marginTop: 'auto', padding: '2rem', textAlign: 'center' }}>
-              <button className="danger-btn-retro" onClick={() => gameState.resetAccount()}>
-                RESET DATA
+            {/* Top Minimal HUD */}
+            <div className="hud-top-left">
+              <div className="player-level-circle">
+                <span className="lvl-label">Lv</span>
+                <span className="lvl-value">52</span>
+              </div>
+              <div className="player-info-text">
+                <div className="player-name">TimeKeeper</div>
+                <div className="player-id">ID: 1999042</div>
+              </div>
+            </div>
+
+            <div className="hud-top-right">
+               <div className="currency-item">
+                 <span>💎</span> {gameState.gems.toLocaleString()}
+               </div>
+               <div className="currency-item">
+                 <span>🪙</span> {gameState.gold.toLocaleString()}
+               </div>
+               <div className="currency-item">
+                 <span>🔋</span> 120/120
+               </div>
+            </div>
+
+            {/* Left Sidebar Navigation */}
+            <div className="sidebar-left">
+              <button className="sidebar-btn">
+                <span className="icon">📧</span>
+                <span className="label">Mail</span>
+              </button>
+              <button className="sidebar-btn">
+                <span className="icon">📋</span>
+                <span className="label">Task</span>
+              </button>
+              <button className="sidebar-btn" onClick={() => setActiveTab('party')}>
+                <span className="icon">👥</span>
+                <span className="label">Crew</span>
+              </button>
+              <button className="sidebar-btn">
+                <span className="icon">🎒</span>
+                <span className="label">Storage</span>
+              </button>
+            </div>
+
+            {/* Hero Showcase (Center-Left) */}
+            {(() => {
+               // Determine which character to show: 
+               // 1. Explicitly selected showcase character
+               // 2. Or fallback to first party member
+               // 3. Or fallback to first inventory item
+               const showcaseId = gameState.showcaseCharacterId;
+               const showcaseChar = gameState.inventory.find((c: any) => c.id === showcaseId) 
+                                 || gameState.party[0]
+                                 || gameState.inventory[0];
+
+               return showcaseChar ? (
+                <div 
+                  className="hero-showcase" 
+                  style={{ backgroundImage: `url(${showcaseChar.splashArt})` }}
+                  onClick={() => setActiveTab('party')}
+                ></div>
+               ) : null;
+            })()}
+            
+            {/* Right Action Tickets */}
+            <div className="action-tickets-right">
+              <div className="ticket-group-primary">
+                <button className="ticket-btn adventure-ticket" onClick={() => setActiveTab('battle')}>
+                  <div className="ticket-content">
+                    <span className="ticket-subtitle">CHAPTER 3</span>
+                    <span className="ticket-title">ENTER<br/>THE SHOW</span>
+                    <span className="ticket-stamp">Start</span>
+                  </div>
+                  <div className="ticket-rip"></div>
+                </button>
+              </div>
+
+              <div className="ticket-group-secondary">
+                <button className="ticket-btn summon-ticket" onClick={() => setActiveTab('gacha')}>
+                  <div className="ticket-content-sm">
+                    <span className="icon">✨</span>
+                    <span>SUMMON</span>
+                  </div>
+                </button>
+                <button className="ticket-btn wilderness-ticket">
+                  <div className="ticket-content-sm">
+                    <span className="icon">🏰</span>
+                    <span>MANOR</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* System Reset (Bottom Left, discreet) */}
+            <div className="home-footer">
+              <button className="text-btn-reset" onClick={() => gameState.resetAccount()}>
+                // SYSTEM RESET
               </button>
             </div>
           </div>
         )}
         {activeTab === 'gacha' && <GachaScreen gameState={gameState} />}
-        {activeTab === 'party' && <PartyScreen gameState={gameState} />}
+        {activeTab === 'party' && (
+          <PartyScreen 
+            gameState={gameState} 
+            onOpenDetail={(id) => {
+              setDetailCharId(id)
+              setActiveTab('character_detail')
+            }} 
+          />
+        )}
+        {activeTab === 'character_detail' && detailCharId && (
+          <CharacterDetailScreen 
+            charId={detailCharId} 
+            gameState={gameState} 
+            onClose={() => setActiveTab('party')} 
+          />
+        )}
         {activeTab === 'battle' && <BattleScreen gameState={gameState} onHome={() => setActiveTab('home')} />}
       </main>
 
-      <nav className="game-nav">
-        <button className={activeTab === 'home' ? 'active' : ''} onClick={() => setActiveTab('home')}>HOME</button>
-        <button className={activeTab === 'party' ? 'active' : ''} onClick={() => setActiveTab('party')}>PARTY</button>
-        <button className={activeTab === 'gacha' ? 'active' : ''} onClick={() => setActiveTab('gacha')}>GACHA</button>
-        <button className={activeTab === 'battle' ? 'active' : ''} onClick={() => setActiveTab('battle')}>BATTLE</button>
-      </nav>
+      {activeTab !== 'character_detail' && (
+        <nav className="game-nav">
+          <button className={activeTab === 'home' ? 'active' : ''} onClick={() => setActiveTab('home')}>BASE</button>
+          <button className={activeTab === 'party' ? 'active' : ''} onClick={() => setActiveTab('party')}>PARTY</button>
+          <button className={activeTab === 'gacha' ? 'active' : ''} onClick={() => setActiveTab('gacha')}>GACHA</button>
+          <button className={activeTab === 'battle' ? 'active' : ''} onClick={() => setActiveTab('battle')}>STAGES</button>
+        </nav>
+      )}
     </div>
   )
 }

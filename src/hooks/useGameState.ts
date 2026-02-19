@@ -7,6 +7,7 @@ export interface GameState {
   inventory: Character[]
   party: (Character | null)[]
   currentStage: number
+  showcaseCharacterId: string | null
 }
 
 const RARITY_CHANCES: Record<Rarity, number> = {
@@ -16,27 +17,64 @@ const RARITY_CHANCES: Record<Rarity, number> = {
   'Legendary': 0.02
 }
 
+export interface Banner {
+  id: string
+  name: string
+  description: string
+  rateUpIds: string[]
+  type: 'Standard' | 'Limited'
+}
+
+export const BANNERS: Banner[] = [
+  {
+    id: 'b1',
+    name: 'Standard Summon',
+    description: 'Summon all heroes with standard rates.',
+    rateUpIds: [],
+    type: 'Standard'
+  },
+  {
+    id: 'b2',
+    name: 'Celestial Light',
+    description: 'Aria Rate Up! Higher chance to get legendary Aria.',
+    rateUpIds: ['c1'], // Aria
+    type: 'Limited'
+  }
+]
+
 export const useGameState = () => {
   const [state, setState] = useState<GameState>(() => {
     const saved = localStorage.getItem('idler_rpg_state')
     if (saved) {
       const parsed = JSON.parse(saved)
       
-      // Migrate characters to ensure they have all new properties (mana, skills, stars, etc.)
+      // Migrate characters to ensure they have all new properties
       const migrateCharacter = (c: any) => {
         const base = CHARACTERS.find(bc => bc.id === c.id)
         if (!base) return c
-        const migrated = { ...base, ...c }
-        // Handle rank -> awakening transition
-        if (c.rank !== undefined && c.awakening === undefined) {
-          migrated.awakening = Math.max(0, c.rank - 1)
+        // Keep dynamic stats from save (level, stars, exp, etc)
+        // But force update static definitions (art, skills, names)
+        const migrated = { 
+            ...c, 
+            splashArt: base.splashArt, 
+            skill: base.skill,
+            ultimate: base.ultimate,
+            name: base.name,
+            element: base.element,
+            rarity: base.rarity,
+            tags: base.tags
         }
         return migrated
       }
 
-      parsed.inventory = parsed.inventory.map(migrateCharacter)
-      parsed.party = parsed.party.map((p: any) => p ? migrateCharacter(p) : null)
+      parsed.inventory = (parsed.inventory || []).map(migrateCharacter)
+      parsed.party = (parsed.party || []).map((p: any) => p ? migrateCharacter(p) : null)
       
+      // NEW: showcaseCharacterId migration
+      if (parsed.showcaseCharacterId === undefined) {
+          parsed.showcaseCharacterId = parsed.party[0] ? parsed.party[0].id : (parsed.inventory[0]?.id || null)
+      }
+
       return parsed
     }
     return {
@@ -52,11 +90,13 @@ export const useGameState = () => {
     localStorage.setItem('idler_rpg_state', JSON.stringify(state))
   }, [state])
 
-  const summon = useCallback((amount: number) => {
+  const summon = useCallback((amount: number, bannerId: string = 'b1') => {
     const cost = amount * 100
     if (state.gems < cost) return null
 
+    const banner = BANNERS.find(b => b.id === bannerId) || BANNERS[0]
     const results: Character[] = []
+
     for (let i = 0; i < amount; i++) {
       const rand = Math.random()
       let accumulated = 0
@@ -70,8 +110,18 @@ export const useGameState = () => {
         }
       }
 
-      const pool = CHARACTERS.filter(c => c.rarity === selectedRarity)
-      const character = pool[Math.floor(Math.random() * pool.length)] || CHARACTERS[0]
+      let pool = CHARACTERS.filter(c => c.rarity === selectedRarity)
+      
+      // Rate up logic: 50% chance to get rate-up character if rarity matches
+      const rateUpInPool = pool.filter(c => banner.rateUpIds.includes(c.id))
+      let character: Character
+
+      if (rateUpInPool.length > 0 && Math.random() < 0.5) {
+        character = rateUpInPool[Math.floor(Math.random() * rateUpInPool.length)]
+      } else {
+        character = pool[Math.floor(Math.random() * pool.length)] || CHARACTERS[0]
+      }
+      
       results.push(character)
     }
 
@@ -88,7 +138,7 @@ export const useGameState = () => {
           const baseChar = CHARACTERS.find(bc => bc.id === existing.id) || summonedChar
           
           newInventory[existingIndex] = {
-            ...baseChar, // Ensure new properties like mana/skill are here
+            ...baseChar, // Ensure new properties like mana/skill/splash are here
             ...existing,
             awakening: newAwakening,
             hp: Math.floor(summonedChar.hp * (1 + newAwakening * 0.1) * (1 + (existing.level - 1) * 0.05)),
@@ -115,7 +165,7 @@ export const useGameState = () => {
     })
 
     return results
-  }, [state.gems])
+  }, [state.gems, state.inventory, state.party])
 
   const addToParty = useCallback((character: Character, slotIndex: number) => {
     setState(prev => {
@@ -178,7 +228,11 @@ export const useGameState = () => {
     })
   }, [])
 
-     const resetAccount = useCallback(() => {
+  const setShowcaseCharacter = useCallback((id: string) => {
+    setState(prev => ({ ...prev, showcaseCharacterId: id }))
+  }, [])
+
+  const resetAccount = useCallback(() => {
     if (window.confirm("ARE YOU SURE? This will PERMANENTLY delete all your progress, heroes, and resources!")) {
       localStorage.removeItem('idler_rpg_state')
       window.location.reload()
@@ -192,6 +246,7 @@ export const useGameState = () => {
     removeFromParty,
     advanceStage,
     levelUp,
-    resetAccount
+    resetAccount,
+    setShowcaseCharacter
   }
 }

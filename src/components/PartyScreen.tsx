@@ -3,9 +3,10 @@ import { Character } from '../data/characters'
 
 interface PartyScreenProps {
   gameState: any
+  onOpenDetail: (charId: string) => void
 }
 
-const PartyScreen: React.FC<PartyScreenProps> = ({ gameState }) => {
+const PartyScreen: React.FC<PartyScreenProps> = ({ gameState, onOpenDetail }) => {
   const partySlots = gameState.party
   const inventory = gameState.inventory
   const [selectedSlot, setSelectedSlot] = useState<number | null>(partySlots.findIndex((s: any) => s === null) !== -1 ? partySlots.findIndex((s: any) => s === null) : 0)
@@ -21,52 +22,108 @@ const PartyScreen: React.FC<PartyScreenProps> = ({ gameState }) => {
 
   const isInParty = (charId: string) => partySlots.some((p: any) => p && p.id === charId)
 
+  const handleCardClick = (char: Character) => {
+    if (selectedSlot !== null && !isInParty(char.id)) {
+      handleHeroClick(char)
+    } else {
+      onOpenDetail(char.id)
+    }
+  }
+
+  // Element Icons Map
+  const ELEMENT_ICONS: Record<string, string> = {
+    'Fire': '🔥', 'Water': '💧', 'Wind': '🍃', 'Earth': '🌿', 'Light': '☀', 'Dark': '🌑', 'Ice': '❄'
+  }
+
   return (
     <div className="screen-party">
+      {/* Current Party Section */}
       <section className="current-party">
         <div className="section-header">
-          <h3>Current Party</h3>
-          <p>Select a slot to assign a hero</p>
+          <h3>SQUAD FORMATION</h3>
+          <p>Select a slot, then choose a hero from the roster below.</p>
         </div>
         <div className="party-slots">
           {partySlots.map((char: Character | null, i: number) => (
             <div 
               key={i} 
               className={`party-slot ${selectedSlot === i ? 'selected' : ''}`}
-              onClick={() => setSelectedSlot(i)}
+              onClick={() => char ? onOpenDetail(char.id) : setSelectedSlot(i)}
             >
               {char ? (
-                <div className={`party-member rarity-${char.rarity.toLowerCase()}`}>
-                  <button className="remove-hero-btn" onClick={(e) => { e.stopPropagation(); gameState.removeFromParty(i); }}>×</button>
-                  <div className="name">{char.name}</div>
-                  <div className="rank-stars">{'★'.repeat(char.stars)}</div>
-                  <div className="stats">Lv.{char.level} | ATK: {char.atk} HP: {char.hp}</div>
-                  {char.awakening > 0 && <div className="constellation-tag">C{char.awakening}</div>}
+                <div 
+                  className="character-card"
+                  style={{ 
+                    backgroundImage: `url(${char.splashArt}), linear-gradient(to bottom, #2c3e50, #000)` 
+                  }}
+                >
+                  <div className="card-element">{ELEMENT_ICONS[char.element] || '❓'}</div>
+                  <button className="remove-btn-overlay" onClick={(e) => { e.stopPropagation(); gameState.removeFromParty(i); }}>×</button>
+                  <div className="card-info">
+                    <div className="card-name">{char.name}</div>
+                    <div className="card-sub">
+                      <span>Lv.{char.level} {char.awakening > 0 && <small className="awake-tag">C{char.awakening}</small>}</span>
+                      <span style={{color: '#ffdd57'}}>{'★'.repeat(char.stars)}</span>
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <div className="empty-slot">Slot {i + 1}</div>
+                <div className="empty-slot">SLOT {i + 1}</div>
               )}
             </div>
           ))}
         </div>
       </section>
 
-      <section className="inventory">
-        <h3>Character Collection</h3>
-        <div className="inventory-grid">
-          {inventory.map((char: Character, i: number) => (
-            <div key={i} className={`inventory-card rarity-${char.rarity.toLowerCase()} ${isInParty(char.id) ? 'in-party' : ''}`} 
-                 onClick={() => handleHeroClick(char)}>
-              <div className="char-name">{char.name} (Lv.{char.level})</div>
-              {isInParty(char.id) && <div className="in-party-overlay">IN PARTY</div>}
-              <div className="rank-stars">{'★'.repeat(char.stars)}</div>
-              {char.awakening > 0 && <div className="awakening-level">Constellation {char.awakening}</div>}
-              <div className="rarity-tag">{char.rarity}</div>
-              <button className="level-up-btn" onClick={(e) => { e.stopPropagation(); gameState.levelUp(char.id); }}>
-                Level Up (500 Gold)
-              </button>
-            </div>
-          ))}
+      {/* Hero Collection Grid */}
+      <section className="inventory-section">
+        <div className="section-header">
+          <h3>HERO ROSTER</h3>
+          <p>Total Collection: {inventory.length}</p>
+        </div>
+        
+        <div className="crew-grid">
+          {inventory.map((char: Character) => {
+            const isAssigned = isInParty(char.id);
+            const isAssistant = gameState.showcaseCharacterId === char.id;
+            
+            return (
+              <div 
+                key={char.id} 
+                className={`crew-card-wrapper ${isAssigned ? 'assigned' : ''}`}
+                onClick={() => handleCardClick(char)}
+              >
+                <div 
+                  className="character-card"
+                  style={{ 
+                    backgroundImage: `url(${char.splashArt}), linear-gradient(to bottom, #2c3e50, #000)`
+                  }}
+                >
+                  <div className="card-element">{ELEMENT_ICONS[char.element] || '❓'}</div>
+                  
+                  {/* Assistant Toggle inside Card */}
+                  <button 
+                    className={`card-assistant-btn ${isAssistant ? 'active' : ''}`}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      gameState.setShowcaseCharacter(char.id); 
+                    }}
+                    title="Set as Assistant"
+                  >
+                    {isAssistant ? '❤️' : '♡'}
+                  </button>
+
+                  <div className="card-info">
+                    <div className="card-name">{char.name}</div>
+                    <div className="card-sub">
+                      <span>Lv.{char.level} {char.awakening > 0 && <small className="awake-tag">C{char.awakening}</small>}</span>
+                      <span style={{color: '#ffdd57'}}>{'★'.repeat(char.stars)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
           {inventory.length === 0 && <p className="empty-note">No characters summoned yet.</p>}
         </div>
       </section>
