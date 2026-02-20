@@ -26,6 +26,9 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
   const [battleLog, setBattleLog] = useState<string[]>(['Battle started!'])
   const [popups, setPopups] = useState<DamagePopup[]>([])
   const [arenaShake, setArenaShake] = useState(false)
+  
+  // Lock for animations/turns to prevent spam clicking
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const addLog = (msg: string) => setBattleLog(prev => [msg, ...prev].slice(0, 5))
 
@@ -102,6 +105,7 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
 
     if (nextIndex < playerParty.length) {
       setActiveUnitIndex(nextIndex)
+      setIsProcessing(false) // Unlock for next player
     } else {
       processEnemyTurn()
     }
@@ -133,11 +137,13 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
   }
 
   const handleUltimate = () => {
+    if (isProcessing) return
     const attacker = playerParty[activeUnitIndex]
     const ult = attacker?.ultimate
     if (!attacker || isBattleOver || attacker.currentHp <= 0 || !ult || (attacker.currentMana ?? 0) < (ult.manaCost || 0)) return
 
-    triggerVisualEffect(attacker.id, 'skill') 
+    setIsProcessing(true)
+    triggerVisualEffect(attacker.id, 'skill')   
     addLog(`${attacker.name} ULTIMATE: ${ult.name}!`)
     shakeArena(true)
 
@@ -178,9 +184,11 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
   }
 
   const handleAttack = (target: BattleEntity) => {
+    if (isProcessing) return
     const attacker = playerParty[activeUnitIndex]
     if (!attacker || isBattleOver || attacker.currentHp <= 0) return
 
+    setIsProcessing(true)
     triggerVisualEffect(attacker.id, 'attack')
     
     setTimeout(() => {
@@ -196,10 +204,12 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
   }
 
   const handleSkill = () => {
+    if (isProcessing) return
     const attacker = playerParty[activeUnitIndex]
     const skill = attacker?.skill
     if (!attacker || isBattleOver || attacker.currentHp <= 0 || !skill || (attacker.currentMana ?? 0) < (skill.manaCost || 0)) return
 
+    setIsProcessing(true)
     triggerVisualEffect(attacker.id, 'skill')
     addLog(`${attacker.name} used ${skill.name}!`)
 
@@ -303,7 +313,10 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
           if (final.every(p => p.currentHp <= 0)) setIsBattleOver(true)
           else {
             const first = final.findIndex(p => p.currentHp > 0)
-            if (first !== -1) setActiveUnitIndex(first)
+            if (first !== -1) {
+                setActiveUnitIndex(first)
+                setIsProcessing(false) // Unlock for player turn
+            }
           }
           return final
         })
@@ -313,12 +326,13 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
 
   // Auto Battle Logic
   useEffect(() => {
-    if (!isAuto || isBattleOver) return
+    if (!isAuto || isBattleOver || isProcessing) return
 
     const attacker = playerParty[activeUnitIndex]
     if (!attacker || attacker.currentHp <= 0) return
 
     const timer = setTimeout(() => {
+      // AI Logic: Ult > Skill > Attack
       if (attacker.ultimate && (attacker.currentMana ?? 0) >= (attacker.ultimate.manaCost || 0)) {
         handleUltimate()
       } else if (attacker.skill && (attacker.currentMana ?? 0) >= (attacker.skill.manaCost || 0)) {
@@ -330,7 +344,7 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
     }, 1000)
 
     return () => clearTimeout(timer)
-  }, [isAuto, activeUnitIndex, isBattleOver, playerParty, enemies])
+  }, [isAuto, activeUnitIndex, isBattleOver, playerParty, enemies, isProcessing])
 
   useEffect(() => {
     if (enemies.length > 0 && enemies.every(e => e.currentHp <= 0)) {

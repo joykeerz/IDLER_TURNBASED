@@ -27,7 +27,7 @@ const CharacterDetailScreen: React.FC<CharacterDetailScreenProps> = ({ charId, g
       <header className="detail-header">
         <button className="back-btn" onClick={onClose}>
           <span className="back-icon">◁</span>
-          <span className="back-text">DOCUMENT</span>
+          <span className="back-text">PARTY</span>
         </button>
         <div className="header-decoration">
           <span>◇</span>

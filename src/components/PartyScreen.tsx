@@ -9,7 +9,12 @@ interface PartyScreenProps {
 const PartyScreen: React.FC<PartyScreenProps> = ({ gameState, onOpenDetail }) => {
   const partySlots = gameState.party
   const inventory = gameState.inventory
-  const [selectedSlot, setSelectedSlot] = useState<number | null>(partySlots.findIndex((s: any) => s === null) !== -1 ? partySlots.findIndex((s: any) => s === null) : 0)
+  // Default to selecting the first empty slot or the first slot if all full
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(
+    partySlots.findIndex((s: any) => s === null) !== -1 
+      ? partySlots.findIndex((s: any) => s === null) 
+      : 0
+  )
 
   const handleHeroClick = (char: Character) => {
     if (selectedSlot !== null) {
@@ -37,24 +42,25 @@ const PartyScreen: React.FC<PartyScreenProps> = ({ gameState, onOpenDetail }) =>
 
   return (
     <div className="screen-party">
-      {/* Current Party Section */}
+      {/* Current Party Section (Top - Formation) */}
       <section className="current-party">
         <div className="section-header">
           <h3>SQUAD FORMATION</h3>
-          <p>Select a slot, then choose a hero from the roster below.</p>
+          <p>SELECT A SLOT TO ASSIGN A HERO</p>
         </div>
+        
         <div className="party-slots">
           {partySlots.map((char: Character | null, i: number) => (
             <div 
               key={i} 
               className={`party-slot ${selectedSlot === i ? 'selected' : ''}`}
-              onClick={() => char ? onOpenDetail(char.id) : setSelectedSlot(i)}
+              onClick={() => setSelectedSlot(i)}
             >
               {char ? (
                 <div 
                   className="character-card"
                   style={{ 
-                    backgroundImage: `url(${char.splashArt}), linear-gradient(to bottom, #2c3e50, #000)` 
+                    backgroundImage: `url(${char.splashArt})` 
                   }}
                 >
                   <div className="card-element">{ELEMENT_ICONS[char.element] || '❓'}</div>
@@ -62,7 +68,7 @@ const PartyScreen: React.FC<PartyScreenProps> = ({ gameState, onOpenDetail }) =>
                   <div className="card-info">
                     <div className="card-name">{char.name}</div>
                     <div className="card-sub">
-                      <span>Lv.{char.level} {char.awakening > 0 && <small className="awake-tag">C{char.awakening}</small>}</span>
+                      <span>LV.{char.level}</span>
                       <span style={{color: '#ffdd57'}}>{'★'.repeat(char.stars)}</span>
                     </div>
                   </div>
@@ -75,11 +81,11 @@ const PartyScreen: React.FC<PartyScreenProps> = ({ gameState, onOpenDetail }) =>
         </div>
       </section>
 
-      {/* Hero Collection Grid */}
+      {/* Hero Collection Grid (Bottom - Inventory) */}
       <section className="inventory-section">
         <div className="section-header">
           <h3>HERO ROSTER</h3>
-          <p>Total Collection: {inventory.length}</p>
+          <p>TOTAL COLLECTION: {inventory.length}</p>
         </div>
         
         <div className="crew-grid">
@@ -96,7 +102,7 @@ const PartyScreen: React.FC<PartyScreenProps> = ({ gameState, onOpenDetail }) =>
                 <div 
                   className="character-card"
                   style={{ 
-                    backgroundImage: `url(${char.splashArt}), linear-gradient(to bottom, #2c3e50, #000)`
+                    backgroundImage: `url(${char.splashArt})`
                   }}
                 >
                   <div className="card-element">{ELEMENT_ICONS[char.element] || '❓'}</div>
@@ -116,7 +122,7 @@ const PartyScreen: React.FC<PartyScreenProps> = ({ gameState, onOpenDetail }) =>
                   <div className="card-info">
                     <div className="card-name">{char.name}</div>
                     <div className="card-sub">
-                      <span>Lv.{char.level} {char.awakening > 0 && <small className="awake-tag">C{char.awakening}</small>}</span>
+                      <span>LV.{char.level} {char.awakening > 0 && <small className="awake-tag">C{char.awakening}</small>}</span>
                       <span style={{color: '#ffdd57'}}>{'★'.repeat(char.stars)}</span>
                     </div>
                   </div>

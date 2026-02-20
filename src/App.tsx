@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useGameState } from './hooks/useGameState'
 import GachaScreen from './components/GachaScreen'
 import PartyScreen from './components/PartyScreen'
 import BattleScreen from './components/BattleScreen'
 import WorldMapScreen from './components/WorldMapScreen'
 import CharacterDetailScreen from './components/CharacterDetailScreen'
+import IdleRewardsModal from './components/IdleRewardsModal'
 import './App.css'
 import './index.css'
 
@@ -12,7 +13,24 @@ function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'gacha' | 'party' | 'battle' | 'character_detail' | 'world'>('home')
   const [detailCharId, setDetailCharId] = useState<string | null>(null)
   const [selectedStageId, setSelectedStageId] = useState<number>(1)
+  const [showIdleRewards, setShowIdleRewards] = useState(false)
+  const [idleData, setIdleData] = useState<{gold: number, gems: number, time: string} | null>(null)
   const gameState = useGameState()
+
+  // Check for idle rewards on mount
+  useEffect(() => {
+    const rewards = gameState.claimIdleRewards()
+    if (rewards.seconds > 60) { // Only show if away for > 1 minute
+      const hours = Math.floor(rewards.seconds / 3600)
+      const minutes = Math.floor((rewards.seconds % 3600) / 60)
+      setIdleData({
+        gold: rewards.gold,
+        gems: rewards.gems,
+        time: `${hours}h ${minutes}m`
+      })
+      setShowIdleRewards(true)
+    }
+  }, []) // Empty dependency to run only once on mount
 
   return (
     <div className="app-container">
@@ -67,6 +85,28 @@ function App() {
               </button>
             </div>
 
+            {/* Idle Chest Button */}
+            <button 
+              className="idle-chest-btn"
+              onClick={() => {
+                 const rewards = gameState.claimIdleRewards()
+                 if (rewards.seconds > 0) {
+                   const hours = Math.floor(rewards.seconds / 3600)
+                   const minutes = Math.floor((rewards.seconds % 3600) / 60)
+                   setIdleData({
+                    gold: rewards.gold,
+                    gems: rewards.gems,
+                    time: `${hours}h ${minutes}m`
+                   })
+                   setShowIdleRewards(true)
+                 } else {
+                   alert("Chest is empty! Come back later.")
+                 }
+              }}
+            >
+              <span className="afk-badge">AFK</span>
+            </button>
+
             {/* Hero Showcase (Center-Left) */}
             {(() => {
                const showcaseId = gameState.showcaseCharacterId
@@ -120,7 +160,7 @@ function App() {
           </div>
         )}
 
-        {activeTab === 'gacha' && <GachaScreen gameState={gameState} />}
+        {activeTab === 'gacha' && <GachaScreen gameState={gameState} onBack={() => setActiveTab('home')} />}
 
         {activeTab === 'party' && (
           <PartyScreen
@@ -168,6 +208,14 @@ function App() {
           <button className={activeTab === 'gacha' ? 'active' : ''} onClick={() => setActiveTab('gacha')}>GACHA</button>
           <button className="" onClick={() => setActiveTab('world')}>STAGES</button>
         </nav>
+      )}
+      {showIdleRewards && idleData && (
+        <IdleRewardsModal
+          timeOffline={idleData.time}
+          gold={idleData.gold}
+          gems={idleData.gems}
+          onClaim={() => setShowIdleRewards(false)}
+        />
       )}
     </div>
   )

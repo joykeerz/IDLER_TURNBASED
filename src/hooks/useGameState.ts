@@ -9,6 +9,7 @@ export interface GameState {
   currentStage: number
   clearedStages: number[]
   showcaseCharacterId: string | null
+  lastSaveTime: number
 }
 
 const RARITY_CHANCES: Record<Rarity, number> = {
@@ -85,12 +86,13 @@ export const useGameState = () => {
       party: [CHARACTERS[0], CHARACTERS[1], null, null],
       currentStage: 1,
       clearedStages: [],
-      showcaseCharacterId: null
+      showcaseCharacterId: null,
+      lastSaveTime: Date.now()
     }
   })
 
   useEffect(() => {
-    localStorage.setItem('idler_rpg_state', JSON.stringify(state))
+    localStorage.setItem('idler_rpg_state', JSON.stringify({ ...state, lastSaveTime: Date.now() }))
   }, [state])
 
   const summon = useCallback((amount: number, bannerId: string = 'b1') => {
@@ -254,6 +256,38 @@ export const useGameState = () => {
     }
   }, [])
 
+  const claimIdleRewards = useCallback(() => {
+    let claimed = { gold: 0, gems: 0, seconds: 0 }
+    setState(prev => {
+        const now = Date.now()
+        const last = prev.lastSaveTime || now
+        const diffMs = now - last
+        const minutes = Math.floor(diffMs / 60000)
+
+        if (minutes < 1) return { ...prev, lastSaveTime: now }
+
+        // Rates
+        // Stage 1: 10 gold/min, 0.1 gem/min
+        // Stage 10: 100 gold/min, 1 gem/min
+        const stageMult = Math.max(1, prev.currentStage)
+        const goldRate = 10 * stageMult
+        const gemRate = 0.1 * stageMult
+
+        const goldEarned = Math.floor(minutes * goldRate)
+        const gemsEarned = Math.floor(minutes * gemRate)
+
+        claimed = { gold: goldEarned, gems: gemsEarned, seconds: Math.floor(diffMs / 1000) }
+
+        return {
+            ...prev,
+            gold: prev.gold + goldEarned,
+            gems: prev.gems + gemsEarned,
+            lastSaveTime: now
+        }
+    })
+    return claimed
+  }, [])
+
   return {
     ...state,
     summon,
@@ -262,7 +296,8 @@ export const useGameState = () => {
     advanceStage,
     clearStage,
     levelUp,
+    setShowcaseCharacter,
     resetAccount,
-    setShowcaseCharacter
+    claimIdleRewards
   }
 }
