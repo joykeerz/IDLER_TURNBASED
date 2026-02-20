@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useGameState } from './hooks/useGameState'
 import GachaScreen from './components/GachaScreen'
 import PartyScreen from './components/PartyScreen'
@@ -6,6 +6,7 @@ import BattleScreen from './components/BattleScreen'
 import WorldMapScreen from './components/WorldMapScreen'
 import CharacterDetailScreen from './components/CharacterDetailScreen'
 import IdleRewardsModal from './components/IdleRewardsModal'
+import AdminPanel from './components/AdminPanel'
 import './App.css'
 import './index.css'
 
@@ -15,6 +16,8 @@ function App() {
   const [selectedStageId, setSelectedStageId] = useState<number>(1)
   const [showIdleRewards, setShowIdleRewards] = useState(false)
   const [idleData, setIdleData] = useState<{gold: number, gems: number, time: string} | null>(null)
+  const [showAdmin, setShowAdmin] = useState(false)
+  const adminClickCount = useRef(0)
   const gameState = useGameState()
 
   // Check for idle rewards on mount
@@ -53,7 +56,13 @@ function App() {
               </div>
             </div>
 
-            <div className="hud-top-right">
+            <div className="hud-top-right" onClick={() => {
+              adminClickCount.current++
+              if (adminClickCount.current >= 5) {
+                setShowAdmin(true)
+                adminClickCount.current = 0
+              }
+            }}>
                <div className="currency-item">
                  <span>💎</span> {gameState.gems.toLocaleString()}
                </div>
@@ -217,6 +226,7 @@ function App() {
           onClaim={() => setShowIdleRewards(false)}
         />
       )}
+      {showAdmin && <AdminPanel gameState={gameState} onClose={() => setShowAdmin(false)} />}
     </div>
   )
 }

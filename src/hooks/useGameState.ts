@@ -288,6 +288,24 @@ export const useGameState = () => {
     return claimed
   }, [])
 
+  const adminSetResources = useCallback((gold: number, gems: number) => {
+    setState(prev => ({ ...prev, gold, gems }))
+  }, [])
+
+  const adminSetStage = useCallback((stageId: number) => {
+    setState(prev => ({ ...prev, currentStage: stageId }))
+  }, [])
+
+  const adminAddCharacter = useCallback((charId: string) => {
+    const char = CHARACTERS.find(c => c.id === charId)
+    if (!char) return
+    setState(prev => {
+      const exists = prev.inventory.find(c => c.id === charId)
+      if (exists) return prev
+      return { ...prev, inventory: [...prev.inventory, { ...char }] }
+    })
+  }, [])
+
   return {
     ...state,
     summon,
@@ -298,6 +316,9 @@ export const useGameState = () => {
     levelUp,
     setShowcaseCharacter,
     resetAccount,
-    claimIdleRewards
+    claimIdleRewards,
+    adminSetResources,
+    adminSetStage,
+    adminAddCharacter
   }
 }
