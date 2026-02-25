@@ -26,11 +26,17 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
   const [battleLog, setBattleLog] = useState<string[]>(['Battle started!'])
   const [popups, setPopups] = useState<DamagePopup[]>([])
   const [arenaShake, setArenaShake] = useState(false)
+  const [vfxFlash, setVfxFlash] = useState<'white' | 'dark' | null>(null)
   
   // Lock for animations/turns to prevent spam clicking
   const [isProcessing, setIsProcessing] = useState(false)
 
   const addLog = (msg: string) => setBattleLog(prev => [msg, ...prev].slice(0, 5))
+
+  const triggerFlash = (type: 'white' | 'dark' = 'white') => {
+    setVfxFlash(type)
+    setTimeout(() => setVfxFlash(null), 150)
+  }
 
   const resetBattle = () => {
     const p = gameState.party.filter((c: any) => c !== null).map((c: any) => ({ 
@@ -125,8 +131,8 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
 
   const addPopup = (value: number | string, isHeal = false) => {
     const id = Date.now() + Math.random()
-    const x = 40 + Math.random() * 20
-    const y = 40 + Math.random() * 20
+    const x = 30 + Math.random() * 40 // Wider spread
+    const y = 20 + Math.random() * 40
     setPopups(prev => [...prev, { id, value, x, y, type: isHeal ? 'heal' : 'damage' }])
     setTimeout(() => setPopups(prev => prev.filter(p => p.id !== id)), 800)
   }
@@ -145,6 +151,7 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
     setIsProcessing(true)
     triggerVisualEffect(attacker.id, 'skill')   
     addLog(`${attacker.name} ULTIMATE: ${ult.name}!`)
+    triggerFlash('dark') // Dark flash for ultimates
     shakeArena(true)
 
     setTimeout(() => {
@@ -152,18 +159,20 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
         const damage = Math.floor(attacker.atk * (ult.power || 1))
         setEnemies(prev => prev.map(e => {
           if (e.currentHp > 0) {
-            addPopup(damage)
+            const isCrit = Math.random() < 0.2 // Visual only for now
+            addPopup(isCrit ? `CRIT ${Math.floor(damage * 1.5)}` : damage)
             triggerVisualEffect(e.id, 'damage')
-            return { ...e, currentHp: Math.max(0, e.currentHp - damage) }
+            return { ...e, currentHp: Math.max(0, e.currentHp - (isCrit ? Math.floor(damage * 1.5) : damage)) }
           }
           return e
         }))
       } else if (ult.type === 'Attack') {
         const target = enemies.find(e => e.currentHp > 0) || enemies[0]
         const damage = Math.floor(attacker.atk * (ult.power || 1))
-        addPopup(damage)
+        const isCrit = Math.random() < 0.2
+        addPopup(isCrit ? `CRIT ${Math.floor(damage * 1.5)}` : damage)
         triggerVisualEffect(target.id, 'damage')
-        setEnemies(prev => prev.map(e => e.id === target.id ? { ...e, currentHp: Math.max(0, e.currentHp - damage) } : e))
+        setEnemies(prev => prev.map(e => e.id === target.id ? { ...e, currentHp: Math.max(0, e.currentHp - (isCrit ? Math.floor(damage * 1.5) : damage)) } : e))
       } else if (ult.type === 'Heal') {
         const healAmount = ult.power || 500
         setPlayerParty(prev => prev.map(p => {
@@ -196,6 +205,7 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
       addLog(`${attacker.name} attacked ${target.name} for ${damage} damage!`)
       addPopup(damage)
       triggerVisualEffect(target.id, 'damage')
+      triggerFlash('white')
       if (damage > 100) shakeArena()
 
       setEnemies(prev => prev.map(e => e.id === target.id ? { ...e, currentHp: Math.max(0, e.currentHp - damage) } : e))
@@ -212,6 +222,7 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
     setIsProcessing(true)
     triggerVisualEffect(attacker.id, 'skill')
     addLog(`${attacker.name} used ${skill.name}!`)
+    triggerFlash('white')
 
     setTimeout(() => {
       if (skill.type === 'AOE') {
@@ -401,10 +412,13 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
       </div>
 
       <div className={`battle-arena-cinematic ${arenaShake ? 'shake-heavy' : ''}`}>
+        {/* VFX Overlay */}
+        <div className={`vfx-global-flash ${vfxFlash === 'white' ? 'animate-vfx-flash' : vfxFlash === 'dark' ? 'animate-vfx-darkflash' : ''}`}></div>
+        
         {popups.map(p => (
           <div 
             key={p.id} 
-            className="battle-damage-number" 
+            className={`battle-damage-number ${p.type} ${typeof p.value === 'string' && p.value.includes('CRIT') ? 'critical' : ''}`} 
             style={{ left: `${p.x}%`, top: `${p.y}%` }}
           >
             {p.value}
@@ -422,6 +436,7 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
                 className="portrait-art-wrap" 
                 style={{ backgroundImage: e.splashArt ? `url(${e.splashArt})` : 'none' }}
               >
+                <div className={`skill-cast-overlay ${e.lastAction === 'skill' ? 'active' : ''}`}></div>
                 {!e.splashArt && (
                   <div className="enemy-silhouette">
                     <span className="enemy-icon-large">👹</span>
@@ -446,7 +461,9 @@ const BattleScreen = ({ gameState, stageId = 1, onHome, onVictory }: { gameState
               key={p.id} 
               className={`battle-portrait-unit player ${i === activeUnitIndex ? 'active' : ''} ${p.currentHp <= 0 ? 'dead' : ''} ${p.lastAction === 'damage' ? 'taking-damage' : ''} ${p.lastAction === 'attack' || p.lastAction === 'skill' ? 'lunge-player' : ''}`}
             >
-              <div className="portrait-art-wrap" style={{ backgroundImage: `url(${p.splashArt})` }}></div>
+              <div className="portrait-art-wrap" style={{ backgroundImage: `url(${p.splashArt})` }}>
+                <div className={`skill-cast-overlay ${p.lastAction === 'skill' ? 'active' : ''}`}></div>
+              </div>
               <div className="portrait-platform"></div>
             </div>
           ))}

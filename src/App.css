@@ -2248,6 +2248,71 @@ body {
   box-shadow: 0 2px 0 #600;
 }
 
+/* --- NEW VFX ENHANCEMENTS --- */
+.vfx-global-flash {
+  position: absolute;
+  inset: 0;
+  background: white;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.animate-vfx-flash {
+  animation: flashAnim 0.15s ease-out;
+}
+
+@keyframes flashAnim {
+  0% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+.animate-vfx-darkflash {
+  animation: darkFlashAnim 0.3s ease-out;
+}
+
+@keyframes darkFlashAnim {
+  0% { background: #000; opacity: 0.8; }
+  100% { background: #000; opacity: 0; }
+}
+
+.skill-cast-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(var(--primary-rgb), 0.2) 0%, transparent 70%);
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.skill-cast-overlay.active {
+  opacity: 1;
+  animation: pulseSkill 1s infinite alternate;
+}
+
+@keyframes pulseSkill {
+  from { opacity: 0.3; }
+  to { opacity: 0.7; }
+}
+
+.damage-popup.critical {
+  color: #ffde00;
+  font-size: 3rem;
+  text-shadow: 0 0 10px #ffde00, 2px 2px 0px #000;
+  filter: drop-shadow(0 0 5px orange);
+}
+
+.battle-portrait-unit.active {
+  z-index: 10;
+}
+
+.battle-portrait-unit.active .portrait-art-wrap {
+  border: 4px solid var(--primary);
+  box-shadow: 0 0 30px var(--primary);
+  transform: scale(1.05);
+}
+
 /* --- CHARACTER DETAIL PAGE (FULL SCREEN) --- */
 .character-detail-page {
   position: fixed;
